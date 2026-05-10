@@ -1,0 +1,46 @@
+{
+  "appid": "wx1055802dcd1608cf",
+  "projectname": "climbing-grit-journal-mvp",
+  "compileType": "miniprogram",
+  "libVersion": "trial",
+  "miniprogramRoot": "dist/",
+  "srcMiniprogramRoot": "dist/",
+  "packNpmManually": false,
+  "condition": {},
+  "setting": {
+    "urlCheck": false,
+    "es6": true,
+    "postcss": true,
+    "minified": false,
+    "enhance": true,
+    "showShadowRootInWxmlPanel": true,
+    "compileHotReLoad": true,
+    "packNpmRelationList": [],
+    "useApiHook": true,
+    "minifyWXSS": true,
+    "minifyWXML": true,
+    "ignoreUploadUnusedFiles": true,
+    "ignoreDevUnusedFiles": true,
+    "compileWorklet": false,
+    "uglifyFileName": false,
+    "uploadWithSourceMap": true,
+    "packNpmManually": false,
+    "localPlugins": false,
+    "disableUseStrict": false,
+    "useCompilerPlugins": false,
+    "condition": false,
+    "swc": false,
+    "disableSWC": true,
+    "babelSetting": {
+      "ignore": [],
+      "disablePlugins": [],
+      "outputPath": ""
+    }
+  },
+  "simulatorPluginLibVersion": {},
+  "packOptions": {
+    "ignore": [],
+    "include": []
+  },
+  "editorSetting": {}
+}

@@ -1,0 +1,43 @@
+{
+  "name": "climbing-grit-journal-mvp",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "start": "node server/index.js",
+    "dev:weapp": "./node_modules/.bin/taro build --type weapp --watch",
+    "build:weapp": "./node_modules/.bin/taro build --type weapp",
+    "server:dev": "node --watch server/index.js",
+    "server:start": "node server/index.js",
+    "lint": "eslint \"src/**/*.{ts,tsx}\"",
+    "test": "echo \"No test runner configured yet\""
+  },
+  "dependencies": {
+    "@openbeta/sandbag": "^0.0.55",
+    "@tarojs/components": "^4.0.4",
+    "@tarojs/plugin-framework-react": "^4.2.0",
+    "@tarojs/plugin-platform-weapp": "^4.2.0",
+    "@tarojs/react": "^4.2.0",
+    "@tarojs/runtime": "^4.0.4",
+    "@tarojs/taro": "^4.0.4",
+    "@tarojs/webpack5-runner": "^4.2.0",
+    "bcryptjs": "^3.0.2",
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@babel/preset-react": "^7.28.5",
+    "@tarojs/cli": "^4.0.4",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "babel-preset-taro": "^4.2.0",
+    "eslint": "^9.2.0",
+    "globals": "^17.6.0",
+    "sass": "^1.77.6",
+    "typescript": "^5.5.4",
+    "typescript-eslint": "^8.59.2"
+  }
+}

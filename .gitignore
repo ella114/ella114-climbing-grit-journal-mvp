@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.home/
+.taro-cache/
+.taro4.0/
+.DS_Store
+server/data/db.json
