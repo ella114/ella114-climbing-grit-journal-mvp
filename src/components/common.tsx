@@ -1,7 +1,7 @@
 import { Button, Text, View } from "@tarojs/components";
 import Taro from "@tarojs/taro";
 import { PropsWithChildren, ReactNode, useEffect } from "react";
-import { useI18n } from "@/i18n";
+import { applyRuntimeLanguage, useI18n } from "@/i18n";
 import { MetricResult } from "@/types/domain";
 
 export function PageHeader({
@@ -15,17 +15,18 @@ export function PageHeader({
   onBack?: () => void;
   showBack?: boolean;
 }) {
-  const { t } = useI18n();
+  const { language, t } = useI18n();
   const displayTitle = t(title);
   const displaySubtitle = subtitle ? t(subtitle) : undefined;
 
   useEffect(() => {
     try {
+      applyRuntimeLanguage(language);
       Taro.setNavigationBarTitle({ title: displayTitle });
     } catch {
       // The custom header still renders translated text if the runtime cannot update native title.
     }
-  }, [displayTitle]);
+  }, [displayTitle, language]);
 
   return (
     <View className="page-header">

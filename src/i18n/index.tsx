@@ -39,6 +39,7 @@ const EN_TRANSLATIONS: Record<string, string> = {
   "地址。": "address.",
   "还没有保存的 OpenBeta 区域。先下载一个区域，之后可以在这里快速浏览岩场和线路。": "No saved OpenBeta areas yet. Download a region first, then browse crags and climbs here.",
   "快速开始": "Quick Start",
+  "Start Session": "Start Session",
   "开始记录": "Start Recording",
   "本周成长提醒": "Weekly Growth Reminder",
   "本周成长数据已准备好。去 Stats 查看完整复盘。": "Your weekly growth data is ready. Open Stats for the full recap.",
@@ -101,6 +102,9 @@ const EN_TRANSLATIONS: Record<string, string> = {
   "保存前检查": "Pre-save Check",
   "本次已添加 Climb": "Added Climb",
   "本次 Climb 草稿": "Climb Draft",
+  "还没有暂存 Climb，保存前需要 1 条。": "No Climb draft yet. Add 1 before saving.",
+  "每个 Session 只保留当天最值得记录的一条线。": "Each Session keeps only the most meaningful climb of the day.",
+  "条": "",
   "先加一条 Climb。真正有用的记录，来自一次次具体尝试。": "Add one Climb first. Useful records come from specific attempts.",
   "编辑 Climb": "Edit Climb",
   "+ 添加 Climb": "+ Add Climb",
@@ -152,6 +156,25 @@ const EN_TRANSLATIONS: Record<string, string> = {
   "搜索名称、地点、难度、标签或 beta": "Search name, location, grade, tags, or beta",
   "正在加载 Project…": "Loading Projects...",
   "Project 详情": "Project Details",
+  "这个 Project 关联的具体 Session 记录。": "Sessions linked to this Project.",
+  "关闭": "Close",
+  "未填写标签": "No tags",
+  "收起": "Hide",
+  "未记录时间": "No date",
+  "次尝试": "attempts",
+  "心理恐惧程度：": "Fear: ",
+  "失败原因：": "Failure reasons: ",
+  "查看完整 Session": "Open Full Session",
+  "还没有关联到这个 Project 的 Session。": "No Sessions linked to this Project yet.",
+  "已标记完攀": "Marked as sent",
+  "更新失败": "Update failed",
+  "创建失败": "Create failed",
+  "请至少填写 Project 名称和难度": "Please enter at least Project name and grade",
+  "Project 不存在": "Project not found",
+  "Project 已更新": "Project updated",
+  "Project 已创建": "Project created",
+  "取消导入": "Cancel Import",
+  "线路名、地点、难度和 OpenBeta ID 已锁定。状态、标签和 beta 笔记仍可补充。": "Route name, location, grade, and OpenBeta ID are locked. Status, tags, and beta notes can still be edited.",
   "Timeline": "Timeline",
   "这次没有写备注。": "No notes for this attempt.",
   "还没有关联到这条 Project 的 Climb。": "No Climbs linked to this Project yet.",
@@ -162,11 +185,17 @@ const EN_TRANSLATIONS: Record<string, string> = {
   "个资源": "items",
   "未记录": "Not recorded",
   "抱石": "Bouldering",
+  "bouldering": "Bouldering",
   "顶绳": "Top rope",
+  "top_rope": "Top rope",
   "先锋": "Lead",
+  "lead": "Lead",
   "训练板": "Training board",
+  "training_board": "Training board",
   "野攀": "Outdoor",
+  "outdoor": "Outdoor",
   "其他": "Other",
+  "other": "Other",
   "颜色": "Color",
   "自定义": "Custom",
   "已完成": "Sent",
@@ -212,10 +241,12 @@ const EN_TRANSLATIONS: Record<string, string> = {
   "放弃": "Abandoned",
   "添加 Climb": "Add Climb",
   "先回答结果，再补充恐惧、尝试和卡点。": "Choose the result first, then add fear, attempts, and blockers.",
+  "例如 V4 / 6B / 5.11a / 蓝线": "e.g. V4 / 6B / 5.11a / blue route",
   "难度体系": "Grade System",
   "来自 OpenBeta，保存时不可更改。": "From OpenBeta. This cannot be changed when saved.",
   "标准化等级：": "Normalized grade: ",
   "暂不可比较": "Not comparable yet",
+  "已识别为": "Detected as",
   "你完成这条线了吗？": "Did you send this climb?",
   "你是怎么完成的？": "How did you send it?",
   "这次尝试发生了什么？": "What happened in this attempt?",
@@ -229,6 +260,8 @@ const EN_TRANSLATIONS: Record<string, string> = {
   "恐惧感 1-5": "Fear 1-5",
   "坠落次数": "Falls",
   "Take 次数": "Takes",
+  "High point": "High point",
+  "第几手 / 第几个 clip / 约百分比": "Move number / clip number / approximate percentage",
   "收起更多信息": "Hide More",
   "展开更多信息": "Show More",
   "动作标签": "Movement Tags",
@@ -246,8 +279,17 @@ const EN_TRANSLATIONS: Record<string, string> = {
   "选择图片 / 视频": "Choose Image / Video",
   "个": "items",
   "媒体选择失败": "Media selection failed",
+  "保存到本次 Session": "Save to this Session",
+  "更新这条 Climb": "Update this Climb",
+  "Session 已更新": "Session updated",
+  "Session 已保存": "Session saved",
+  "保存失败": "Save failed",
+  "今天还没有保存 Session": "No Sessions saved today",
+  "今天还没有可生成的 Climb 记录": "No Climb records for today",
+  "还没有 Climb": "No Climbs yet",
   "标记为 Sent": "Mark as Sent",
   "生成分享卡": "Generate Share Card",
+  "Generate Weekly Growth Card": "Generate Weekly Growth Card",
   "Stats / Grit": "Stats / Grit",
   "本周成长卡只能从这里生成，首页只做提醒。": "Weekly growth cards are generated here. Home only reminds you.",
   "本周成长模块": "Weekly Growth",
@@ -282,6 +324,35 @@ const EN_TRANSLATIONS: Record<string, string> = {
   "English": "English"
 };
 
+const ZH_TRANSLATIONS: Record<string, string> = {
+  Home: "首页",
+  Logs: "日志",
+  Crags: "岩场",
+  Stats: "统计",
+  "Start Session": "开始 Session",
+  "Generate Weekly Growth Card": "生成本周成长卡",
+  "Generate Share Card": "生成分享卡",
+  "Stats / Grit": "统计 / Grit",
+  "Quick Start": "快速开始",
+  "Weekly Growth": "本周成长",
+  "Five Concrete Metrics": "五个确定性指标",
+  "Not enough data": "数据不足",
+  "Keep logging. Next week will make the pattern clearer.": "继续记录，下一周会更清楚地看到变化。",
+  "Track the project that keeps asking for another try.": "记录那条总让你想再试一次的 Project。",
+  "Current API local warning": "当前体验版还在请求本机后端。先把 API 切到公网地址再试。",
+  "Backend unavailable": "后端暂时连不上：",
+  "High point": "最高点",
+  "OpenBeta Notes": "OpenBeta 笔记",
+  bouldering: "抱石",
+  top_rope: "顶绳",
+  lead: "先锋",
+  training_board: "训练板",
+  outdoor: "野攀",
+  other: "其他",
+  Session: "Session",
+  Project: "Project"
+};
+
 type I18nContextValue = {
   language: AppLanguage;
   setLanguage: (language: AppLanguage) => void;
@@ -294,26 +365,32 @@ const I18nContext = createContext<I18nContextValue>({
   t: (text) => text
 });
 
-function applyRuntimeLanguage(language: AppLanguage) {
+export function applyRuntimeLanguage(language: AppLanguage) {
   const isEnglish = language === "en";
+  const labels = isEnglish ? ["Home", "Logs", "Crags", "Stats"] : ["首页", "日志", "岩场", "统计"];
+
+  function apply() {
+    Taro.setNavigationBarTitle({ title: isEnglish ? "Climbing Grit Journal" : "攀岩成长日志" });
+    labels.forEach((text, index) => {
+      Taro.setTabBarItem({ index, text });
+    });
+  }
 
   try {
-    Taro.setNavigationBarTitle({ title: isEnglish ? "Climbing Grit Journal" : "攀岩成长日志" });
-    Taro.setTabBarItem({ index: 0, text: isEnglish ? "Home" : "首页" });
-    Taro.setTabBarItem({ index: 1, text: "Logs" });
-    Taro.setTabBarItem({ index: 2, text: "Crags" });
-    Taro.setTabBarItem({ index: 3, text: "Stats" });
+    apply();
+    Taro.nextTick(apply);
+    setTimeout(apply, 120);
   } catch {
     // Some runtimes do not expose tab bar mutation during tests or before the page is ready.
   }
 }
 
 export function translateLiteral(text: string, language: AppLanguage) {
-  if (language !== "en") {
-    return text;
+  if (language === "en") {
+    return EN_TRANSLATIONS[text] ?? text;
   }
 
-  return EN_TRANSLATIONS[text] ?? text;
+  return ZH_TRANSLATIONS[text] ?? text;
 }
 
 export function I18nProvider({ children }: PropsWithChildren) {

@@ -34,15 +34,15 @@ export default defineAppConfig({
       },
       {
         pagePath: "pages/logs/index",
-        text: "Logs"
+        text: "日志"
       },
       {
         pagePath: "pages/crags/index",
-        text: "Crags"
+        text: "岩场"
       },
       {
         pagePath: "pages/stats/index",
-        text: "Stats"
+        text: "统计"
       }
     ]
   }

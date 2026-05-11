@@ -41,8 +41,12 @@ export default function LoginPage() {
       const errorMessage =
         error instanceof Error && error.message === LOCAL_API_UNAVAILABLE_ERROR
           ? API_BASE_URL_IS_LOCAL
-            ? "当前体验版还在请求本机后端。先把 API 切到公网地址再试。"
-            : `后端暂时连不上：${API_BASE_URL}`
+            ? language === "en"
+              ? "This preview is still requesting the local backend. Switch the API to a public URL first."
+              : "当前体验版还在请求本机后端。先把 API 切到公网地址再试。"
+            : language === "en"
+              ? `Backend unavailable: ${API_BASE_URL}`
+              : `后端暂时连不上：${API_BASE_URL}`
           : error instanceof Error
             ? error.message
             : t("认证失败");

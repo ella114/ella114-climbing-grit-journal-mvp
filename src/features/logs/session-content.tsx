@@ -246,6 +246,11 @@ export function SessionLogsContent({
   const projectOptions = [...projects].sort((left, right) =>
     String(right.updatedAt || right.createdAt || "").localeCompare(String(left.updatedAt || left.createdAt || ""))
   );
+  const draftCheckText = draftClimbs.length
+    ? language === "en"
+      ? `This Session has ${draftClimbs.length} saved Climb draft. Each Session keeps only the most meaningful climb of the day.`
+      : `本次 Session 已暂存 ${draftClimbs.length} 条 Climb。每个 Session 只保留当天最值得记录的一条线。`
+    : t("还没有暂存 Climb，保存前需要 1 条。");
 
   function resetEditorState() {
     setDraftClimbs([]);
@@ -317,7 +322,10 @@ export function SessionLogsContent({
     }
 
     if (draftClimbs.length > 1) {
-      Taro.showToast({ title: "每条 Session 只保留 1 条 Climb，请先删除多余记录。", icon: "none" });
+      Taro.showToast({
+        title: language === "en" ? "Each Session keeps only 1 Climb. Delete the extra draft first." : "每条 Session 只保留 1 条 Climb，请先删除多余记录。",
+        icon: "none"
+      });
       return;
     }
 
@@ -512,10 +520,10 @@ export function SessionLogsContent({
 
       await reload();
 
-      Taro.showToast({ title: editingSessionId ? "Session 已更新" : "Session 已保存", icon: "success" });
+      Taro.showToast({ title: editingSessionId ? t("Session 已更新") : t("Session 已保存"), icon: "success" });
       resetEditorState();
     } catch (error) {
-      Taro.showToast({ title: error instanceof Error ? error.message : "保存失败", icon: "none" });
+      Taro.showToast({ title: error instanceof Error ? error.message : t("保存失败"), icon: "none" });
     } finally {
       setIsSaving(false);
     }
@@ -530,7 +538,7 @@ export function SessionLogsContent({
     const todaySessions = sessions.filter((session) => session.date === today);
 
     if (!todaySessions.length) {
-      Taro.showToast({ title: "今天还没有保存 Session", icon: "none" });
+      Taro.showToast({ title: t("今天还没有保存 Session"), icon: "none" });
       return;
     }
 
@@ -538,7 +546,7 @@ export function SessionLogsContent({
     const todayClimbs = climbs.filter((climb) => todaySessionIds.has(climb.sessionId));
 
     if (!todayClimbs.length) {
-      Taro.showToast({ title: "今天还没有可生成的 Climb 记录", icon: "none" });
+      Taro.showToast({ title: t("今天还没有可生成的 Climb 记录"), icon: "none" });
       return;
     }
 
@@ -556,10 +564,14 @@ export function SessionLogsContent({
                 <View className="eyebrow-text">OPENBETA PREFILL</View>
               </View>
               <View className="card-title">{activeOpenBetaSessionPrefill.routeName}</View>
-              <View className="card-subtitle">线路、地点、难度和 OpenBeta ID 已锁定。你只需要补这次尝试的结果、次数和感受。</View>
+              <View className="card-subtitle">
+                {language === "en"
+                  ? "Route name, location, grade, and OpenBeta ID are locked. Add this attempt's result, attempts, and feelings."
+                  : "线路、地点、难度和 OpenBeta ID 已锁定。你只需要补这次尝试的结果、次数和感受。"}
+              </View>
             </View>
             <Button className="ghost-button" onClick={resetEditorState}>
-              取消导入
+              {language === "en" ? "Cancel Import" : "取消导入"}
             </Button>
           </View>
         </Card>
@@ -633,7 +645,7 @@ export function SessionLogsContent({
                     }
                   }}
                 >
-                  {option.label}
+                  {t(option.label)}
                 </View>
               ))}
             </View>
@@ -641,11 +653,11 @@ export function SessionLogsContent({
 
           {sessionDraft.discipline === "other" ? (
             <View>
-              <Text className="field-label">补充类型</Text>
+              <Text className="field-label">{t("补充类型")}</Text>
               <Input
                 className="input"
                 value={sessionDraft.disciplineOtherText ?? ""}
-                placeholder="例如 speed / trad / 校园板 / 其他训练"
+                placeholder={language === "en" ? "e.g. speed / trad / campus board / other training" : "例如 speed / trad / 校园板 / 其他训练"}
                 onInput={(event) => setSessionDraft({ ...sessionDraft, disciplineOtherText: event.detail.value })}
               />
             </View>
@@ -675,9 +687,9 @@ export function SessionLogsContent({
         <View className="row-between">
           <View>
             <View className="card-title">{editingSessionId ? t("更新前检查") : t("保存前检查")}</View>
-            <View className="card-subtitle">{draftClimbs.length ? `本次 Session 已暂存 ${draftClimbs.length} 条 Climb。每个 Session 只保留当天最值得记录的一条线。` : "还没有暂存 Climb，保存前需要 1 条。"}</View>
+            <View className="card-subtitle">{draftCheckText}</View>
           </View>
-          <View className="pill">{draftClimbs.length} 条</View>
+          <View className="pill">{language === "en" ? `${draftClimbs.length}` : `${draftClimbs.length} 条`}</View>
         </View>
       </Card>
 
@@ -688,16 +700,18 @@ export function SessionLogsContent({
             <View className="row-between">
               <View>
                 <View className="card-title">
-                  {climb.gradeLabel || t("未填写难度")} · {climb.outcome ? OUTCOME_LABELS[climb.outcome] : t("未填写状态")}
+                  {climb.gradeLabel || t("未填写难度")} · {climb.outcome ? t(OUTCOME_LABELS[climb.outcome]) : t("未填写状态")}
                 </View>
-                <View className="card-subtitle">恐惧感 {climb.fearRating} / 5 · {climb.attemptsCount ? `${climb.attemptsCount} 次` : climb.attemptsBucket}</View>
+                <View className="card-subtitle">
+                  {language === "en" ? "Fear" : "恐惧感"} {climb.fearRating} / 5 · {climb.attemptsCount ? (language === "en" ? `${climb.attemptsCount} attempts` : `${climb.attemptsCount} 次`) : climb.attemptsBucket}
+                </View>
               </View>
               <View className="row">
                 <Button className="ghost-button" onClick={() => openSheetForEdit(climb.id)}>
-                  编辑
+                  {t("编辑")}
                 </Button>
                 <Button className="ghost-button" onClick={() => removeDraftClimb(climb.id)}>
-                  删除
+                  {t("删除")}
                 </Button>
               </View>
             </View>
@@ -706,12 +720,12 @@ export function SessionLogsContent({
             </View>
             {climb.addToProject ? (
               <View className="card-subtitle">
-                Project：{climb.newProjectTitle?.trim() || projects.find((project) => project.id === climb.selectedProjectId)?.title || t("未命名")}
+                Project: {climb.newProjectTitle?.trim() || projects.find((project) => project.id === climb.selectedProjectId)?.title || t("未命名")}
               </View>
             ) : null}
             {climb.outcome === "sent" && climb.ascentStyle ? <View className="card-subtitle">{t("完攀方式：")}{climb.ascentStyle}</View> : null}
             {climb.outcome && climb.outcome !== "sent" && climb.attemptOutcome ? <View className="card-subtitle">{t("本次结果：")}{climb.attemptOutcome}</View> : null}
-            {climb.mediaItems.length ? <View className="card-subtitle">媒体：{climb.mediaItems.length} 个</View> : null}
+            {climb.mediaItems.length ? <View className="card-subtitle">{t("媒体：")}{climb.mediaItems.length} {t("个")}</View> : null}
           </Card>
         ))
       ) : (
@@ -740,7 +754,7 @@ export function SessionLogsContent({
       {filteredSessions.length ? (
         filteredSessions.map((session) => {
           const sessionClimbs = climbs.filter((climb) => climb.sessionId === session.id);
-          const disciplineLabel = session.discipline === "other" ? session.disciplineOtherText ?? "其他" : session.discipline;
+          const disciplineLabel = session.discipline === "other" ? session.disciplineOtherText ?? t("其他") : t(session.discipline);
           const timeLabel = formatSessionActivityTime(session);
 
           return (
@@ -749,7 +763,7 @@ export function SessionLogsContent({
                 <View>
                   <View className="card-title">{session.locationName ?? t("未填写地点")}</View>
                   <View className="card-subtitle">
-                    {[session.date, timeLabel, disciplineLabel, `${sessionClimbs.length} 条 Climb`].filter(Boolean).join(" · ")}
+                    {[session.date, timeLabel, disciplineLabel, language === "en" ? `${sessionClimbs.length} Climbs` : `${sessionClimbs.length} 条 Climb`].filter(Boolean).join(" · ")}
                   </View>
                 </View>
                 <View className="row">
@@ -763,7 +777,7 @@ export function SessionLogsContent({
                 </View>
               </View>
               <View style={{ marginTop: "12px" }}>
-                <PillRow items={sessionClimbs.length ? sessionClimbs.map((climb) => `${climb.gradeLabel} · ${OUTCOME_LABELS[climb.outcome]}`) : ["还没有 Climb"]} />
+                <PillRow items={sessionClimbs.length ? sessionClimbs.map((climb) => `${climb.gradeLabel} · ${t(OUTCOME_LABELS[climb.outcome])}`) : [t("还没有 Climb")]} />
               </View>
               {session.summary ? <View className="card-subtitle">{session.summary}</View> : null}
             </Card>

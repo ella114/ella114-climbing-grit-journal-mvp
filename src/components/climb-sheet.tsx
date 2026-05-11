@@ -330,7 +330,7 @@ export function ClimbSheet({
               <Input
                 className={`input ${lockedFields?.gradeLabel ? "locked-field" : ""}`}
                 value={draft.gradeLabel}
-                placeholder="例如 V4 / 6B / 5.11a / 蓝线"
+                placeholder={t("例如 V4 / 6B / 5.11a / 蓝线")}
                 disabled={Boolean(lockedFields?.gradeLabel)}
                 onInput={(event) => setDraft({ ...draft, gradeLabel: event.detail.value })}
               />
@@ -356,7 +356,7 @@ export function ClimbSheet({
               </View>
               <View className="page-subtitle">
                 {t("标准化等级：")}{comparableGrade.normalizedGradeValue ?? t("暂不可比较")}
-                {!draft.gradeSystem && comparableGrade.gradeSystem ? ` · 已识别为 ${comparableGrade.gradeSystem}` : ""}
+                {!draft.gradeSystem && comparableGrade.gradeSystem ? ` · ${t("已识别为")} ${comparableGrade.gradeSystem}` : ""}
               </View>
             </View>
 
@@ -500,11 +500,11 @@ export function ClimbSheet({
               <>
                 {draft.outcome && draft.outcome !== "sent" ? (
                   <View>
-                    <Text className="field-label">High point</Text>
+                    <Text className="field-label">{t("High point")}</Text>
                     <Input
                       className="input"
                       value={draft.highPoint ?? ""}
-                      placeholder="第几手 / 第几个 clip / 约百分比"
+                      placeholder={t("第几手 / 第几个 clip / 约百分比")}
                       onInput={(event) => setDraft({ ...draft, highPoint: event.detail.value })}
                     />
                   </View>

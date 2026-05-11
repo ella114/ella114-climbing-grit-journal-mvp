@@ -61,7 +61,7 @@ export default function StatsPage() {
         <View className="divider" />
         <View>{summary}</View>
         <Button className="primary-button" style={{ marginTop: "20px" }} onClick={handleGenerate}>
-          Generate Weekly Growth Card
+          {t("Generate Weekly Growth Card")}
         </Button>
       </Card>
 

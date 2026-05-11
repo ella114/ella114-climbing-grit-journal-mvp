@@ -109,7 +109,7 @@ function Section({
   const { language, t } = useI18n();
 
   if (!projects.length) {
-    return <EmptyState title={`${title} 暂时为空。`} />;
+    return <EmptyState title={language === "en" ? `${title} is empty.` : `${title} 暂时为空。`} />;
   }
 
   return (
@@ -171,6 +171,7 @@ function ProjectSessionSheet({
   onOpenSession: (sessionId: string) => void;
 }) {
   const [isBetaExpanded, setIsBetaExpanded] = useState(false);
+  const { language, t } = useI18n();
 
   if (!project) {
     return null;
@@ -178,7 +179,7 @@ function ProjectSessionSheet({
 
   const betaNotes = project.betaNotes?.trim();
   const shouldCollapseBeta = Boolean(betaNotes && betaNotes.length > 56);
-  const betaText = betaNotes ? (isBetaExpanded ? betaNotes : truncateText(betaNotes, 56)) : "还没有写 beta 笔记。";
+  const betaText = betaNotes ? (isBetaExpanded ? betaNotes : truncateText(betaNotes, 56)) : t("还没有写 beta 笔记。");
   const relatedClimbs = climbs
     .filter((climb) => climb.projectId === project.id)
     .sort((left, right) => {
@@ -193,22 +194,22 @@ function ProjectSessionSheet({
         <View className="row-between">
           <View>
             <View className="page-title">{project.title}</View>
-            <View className="page-subtitle">这个 Project 关联的具体 Session 记录。</View>
+            <View className="page-subtitle">{t("这个 Project 关联的具体 Session 记录。")}</View>
           </View>
           <Button className="ghost-button" onClick={onClose}>
-            关闭
+            {t("关闭")}
           </Button>
         </View>
 
         <View className="project-sheet-meta">
-          <View className="field-label">标签</View>
-          <PillRow items={project.tags.length ? project.tags : ["未填写标签"]} />
+          <View className="field-label">{t("标签")}</View>
+          <PillRow items={project.tags.length ? project.tags : [t("未填写标签")]} />
           <View className="project-beta-preview">
-            <View className="field-label">Beta 笔记</View>
+            <View className="field-label">{t("Beta 笔记")}</View>
             <View className="project-beta-text">{betaText}</View>
             {shouldCollapseBeta ? (
               <View className="project-beta-action" onClick={() => setIsBetaExpanded(!isBetaExpanded)}>
-                {isBetaExpanded ? "收起" : "详情"}
+                {isBetaExpanded ? t("收起") : t("详情")}
               </View>
             ) : null}
           </View>
@@ -226,18 +227,18 @@ function ProjectSessionSheet({
                 <View key={climb.id} className="list-item project-session-item" onClick={() => session && onOpenSession(session.id)}>
                   <View className="session-summary-row">
                     <View>
-                      <View className="card-title">{session?.date ?? "未记录时间"}</View>
+                      <View className="card-title">{session?.date ?? t("未记录时间")}</View>
                       <View className="card-subtitle">
-                        {[session?.locationName, climb.gradeLabel, climb.attemptsCount ? `${climb.attemptsCount} 次尝试` : climb.attemptsBucket]
+                        {[session?.locationName, climb.gradeLabel, climb.attemptsCount ? (language === "en" ? `${climb.attemptsCount} attempts` : `${climb.attemptsCount} 次尝试`) : climb.attemptsBucket]
                           .filter(Boolean)
                           .join(" · ")}
                       </View>
                     </View>
                     <View className={`session-outcome ${outcomeClass}`}>{OUTCOME_LABELS[climb.outcome]}</View>
                   </View>
-                  <View className="card-subtitle">心理恐惧程度：{climb.fearRating} / 5</View>
-                  {climb.outcome !== "sent" && failureText ? <View className="card-subtitle tag-danger">失败原因：{failureText}</View> : null}
-                  {session ? <View className="project-session-link">查看完整 Session</View> : null}
+                  <View className="card-subtitle">{t("心理恐惧程度：")}{climb.fearRating} / 5</View>
+                  {climb.outcome !== "sent" && failureText ? <View className="card-subtitle tag-danger">{t("失败原因：")}{failureText}</View> : null}
+                  {session ? <View className="project-session-link">{t("查看完整 Session")}</View> : null}
                 </View>
               );
             })
@@ -385,10 +386,10 @@ export function ProjectLogsContent({
 
       const nextCard = buildProjectShareCard(updated);
       await reload();
-      Taro.showToast({ title: "已标记完攀", icon: "success" });
+      Taro.showToast({ title: t("已标记完攀"), icon: "success" });
       setShareCard(nextCard);
     } catch (error) {
-      Taro.showToast({ title: error instanceof Error ? error.message : "更新失败", icon: "none" });
+      Taro.showToast({ title: error instanceof Error ? error.message : t("更新失败"), icon: "none" });
     }
   }
 
@@ -475,7 +476,7 @@ export function ProjectLogsContent({
     }
 
     if (!projectForm.title.trim() || !projectForm.gradeLabel.trim()) {
-      Taro.showToast({ title: "请至少填写 Project 名称和难度", icon: "none" });
+      Taro.showToast({ title: t("请至少填写 Project 名称和难度"), icon: "none" });
       return;
     }
 
@@ -518,7 +519,7 @@ export function ProjectLogsContent({
         const currentProject = projects.find((project) => project.id === editingProjectId);
 
         if (!currentProject) {
-          Taro.showToast({ title: "Project 不存在", icon: "none" });
+          Taro.showToast({ title: t("Project 不存在"), icon: "none" });
           return;
         }
 
@@ -542,9 +543,9 @@ export function ProjectLogsContent({
       await reload();
       setSelectedProjectId(saved.id);
       resetProjectForm();
-      Taro.showToast({ title: editingProjectId ? "Project 已更新" : "Project 已创建", icon: "success" });
+      Taro.showToast({ title: editingProjectId ? t("Project 已更新") : t("Project 已创建"), icon: "success" });
     } catch (error) {
-      Taro.showToast({ title: error instanceof Error ? error.message : editingProjectId ? "更新失败" : "创建失败", icon: "none" });
+      Taro.showToast({ title: error instanceof Error ? error.message : editingProjectId ? t("更新失败") : t("创建失败"), icon: "none" });
     } finally {
       setIsSubmitting(false);
     }
@@ -575,10 +576,10 @@ export function ProjectLogsContent({
                 <View className="eyebrow-text">OPENBETA PREFILL</View>
               </View>
               <Button className="ghost-button" onClick={resetProjectForm}>
-                取消导入
+                {t("取消导入")}
               </Button>
             </View>
-            <View className="card-subtitle">线路名、地点、难度和 OpenBeta ID 已锁定。状态、标签和 beta 笔记仍可补充。</View>
+            <View className="card-subtitle">{t("线路名、地点、难度和 OpenBeta ID 已锁定。状态、标签和 beta 笔记仍可补充。")}</View>
           </View>
         ) : null}
         <View className="stack-md" style={{ marginTop: "14px" }}>
@@ -633,7 +634,7 @@ export function ProjectLogsContent({
             <Input
               className="input"
               value={projectForm.tags}
-              placeholder="例如 overhang, fear, compression"
+              placeholder={language === "en" ? "e.g. overhang, fear, compression" : "例如 overhang, fear, compression"}
               onInput={(event) => setProjectForm({ ...projectForm, tags: event.detail.value })}
             />
           </View>

@@ -44,7 +44,7 @@ export default function HomePage() {
       return "";
     }
 
-    return latestSession.discipline === "other" ? latestSession.disciplineOtherText ?? "其他" : latestSession.discipline;
+    return latestSession.discipline === "other" ? latestSession.disciplineOtherText ?? t("其他") : t(latestSession.discipline);
   }
 
   function getLatestSessionSubtitle() {
@@ -83,7 +83,7 @@ export default function HomePage() {
 
       <Card>
         <View className="card-title">{t("快速开始")}</View>
-        <View className="hero-value">Start Session</View>
+        <View className="hero-value">{t("Start Session")}</View>
         <View className="card-subtitle">Record your first climb. Not just grades, but fear, attempts, and persistence too.</View>
         <Button className="primary-button" onClick={() => void switchToLogs("session")}>
           {t("开始记录")}
