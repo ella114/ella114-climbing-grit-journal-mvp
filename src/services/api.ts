@@ -45,7 +45,7 @@ export async function apiRequest<T>(path: string, options: ApiOptions = {}) {
   try {
     const response = await requestTask;
 
-    if (response.statusCode === 401) {
+    if (response.statusCode === 401 && !options.skipAuth) {
       clearAuthSession();
       throw new Error("AUTH_REQUIRED");
     }
