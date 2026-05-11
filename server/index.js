@@ -223,18 +223,36 @@ function normalizeProjectIdentityValue(value) {
 }
 
 function hasDuplicateProjectIdentity(projects, candidate, userId, excludeId) {
+  const routeReferenceId = normalizeProjectIdentityValue(candidate.routeReferenceId);
   const title = normalizeProjectIdentityValue(candidate.title);
   const locationName = normalizeProjectIdentityValue(candidate.locationName);
   const gradeLabel = normalizeProjectIdentityValue(candidate.gradeLabel);
 
-  return projects.some(
-    (project) =>
-      project.userId === userId &&
-      project.id !== excludeId &&
+  return projects.some((project) => {
+    if (project.userId !== userId || project.id === excludeId) {
+      return false;
+    }
+
+    const projectRouteReferenceId = normalizeProjectIdentityValue(project.routeReferenceId);
+
+    if (routeReferenceId && projectRouteReferenceId && projectRouteReferenceId === routeReferenceId) {
+      return true;
+    }
+
+    return (
+      title &&
+      gradeLabel &&
       normalizeProjectIdentityValue(project.title) === title &&
       normalizeProjectIdentityValue(project.locationName) === locationName &&
       normalizeProjectIdentityValue(project.gradeLabel) === gradeLabel
-  );
+    );
+  });
+}
+
+function getDuplicateProjectMessage(project) {
+  return sanitizeOptionalString(project.routeReferenceId)
+    ? "这条路线已经有 Project。请直接继续记录已有 Project。"
+    : "已经有同名、同地点、同难度的 Project。为了列表里更好区分，请换一个名字。";
 }
 
 function clampRating(value, fallback = 3) {
@@ -467,6 +485,49 @@ function syncProjectStateFromClimbs(db, userId, projectIds, timestamp) {
   });
 }
 
+function deleteSessionCascade(db, userId, sessionId) {
+  const session = db.sessions.find((item) => item.id === sessionId && item.userId === userId);
+
+  if (!session) {
+    throwHttpError(404, "Session not found.");
+  }
+
+  const relatedClimbs = filterByUser(db.climbs, userId).filter((climb) => climb.sessionId === sessionId);
+  const touchedProjectIds = new Set(relatedClimbs.map((climb) => climb.projectId).filter(Boolean));
+
+  db.sessions = db.sessions.filter((item) => !(item.id === sessionId && item.userId === userId));
+  db.climbs = db.climbs.filter((climb) => !(climb.userId === userId && climb.sessionId === sessionId));
+  db.media = db.media.filter((media) => !(media.userId === userId && media.sessionId === sessionId));
+  syncProjectStateFromClimbs(db, userId, touchedProjectIds, nowIso());
+}
+
+function deleteProjectAndUnlinkClimbs(db, userId, projectId) {
+  const project = db.projects.find((item) => item.id === projectId && item.userId === userId);
+
+  if (!project) {
+    throwHttpError(404, "Project not found.");
+  }
+
+  db.projects = db.projects.filter((item) => !(item.id === projectId && item.userId === userId));
+  db.climbs = db.climbs.map((climb) =>
+    climb.userId === userId && climb.projectId === projectId
+      ? {
+          ...climb,
+          projectId: undefined,
+          updatedAt: nowIso()
+        }
+      : climb
+  );
+  db.media = db.media.map((media) =>
+    media.userId === userId && media.projectId === projectId
+      ? {
+          ...media,
+          projectId: undefined
+        }
+      : media
+  );
+}
+
 function buildSessionRecord(userId, sessionInput, timestamp, existingSession) {
   return {
     id: existingSession?.id || createId("session"),
@@ -544,7 +605,7 @@ function saveClimbsAndMediaForSession({
       };
 
       if (hasDuplicateProjectIdentity(db.projects, createdProject, userId, createdProject.id)) {
-        throwHttpError(400, "已经有同名、同地点、同难度的 Project。为了列表里更好区分，请换一个名字。");
+        throwHttpError(400, getDuplicateProjectMessage(createdProject));
       }
 
       db.projects.push(createdProject);
@@ -907,6 +968,32 @@ function registerCollectionRoutes(collectionKey) {
     res.json(filterByUser(db[collectionKey], req.auth.sub));
   });
 
+  app.post(`/api/${collectionKey}/:id/delete`, authMiddleware, async (req, res) => {
+    try {
+      const db = await readDb();
+
+      if (collectionKey === "sessions") {
+        deleteSessionCascade(db, req.auth.sub, req.params.id);
+      } else if (collectionKey === "projects") {
+        deleteProjectAndUnlinkClimbs(db, req.auth.sub, req.params.id);
+      } else {
+        const index = db[collectionKey].findIndex((item) => item.id === req.params.id && item.userId === req.auth.sub);
+
+        if (index === -1) {
+          res.status(404).json({ message: "Record not found." });
+          return;
+        }
+
+        db[collectionKey].splice(index, 1);
+      }
+
+      await writeDb(db);
+      res.json({ ok: true });
+    } catch (error) {
+      res.status(error.statusCode || 500).json({ message: error.message || "Internal server error" });
+    }
+  });
+
   app.post(`/api/${collectionKey}`, authMiddleware, async (req, res) => {
     const db = await readDb();
     const entity = req.body || {};
@@ -922,7 +1009,7 @@ function registerCollectionRoutes(collectionKey) {
     };
 
     if (collectionKey === "projects" && hasDuplicateProjectIdentity(db.projects, created, req.auth.sub, created.id)) {
-      res.status(400).json({ message: "已经有同名、同地点、同难度的 Project。为了列表里更好区分，请换一个名字。" });
+      res.status(400).json({ message: getDuplicateProjectMessage(created) });
       return;
     }
 
@@ -947,7 +1034,7 @@ function registerCollectionRoutes(collectionKey) {
     };
 
     if (collectionKey === "projects" && hasDuplicateProjectIdentity(db.projects, updated, req.auth.sub, updated.id)) {
-      res.status(400).json({ message: "已经有同名、同地点、同难度的 Project。为了列表里更好区分，请换一个名字。" });
+      res.status(400).json({ message: getDuplicateProjectMessage(updated) });
       return;
     }
 
@@ -955,6 +1042,32 @@ function registerCollectionRoutes(collectionKey) {
 
     await writeDb(db);
     res.json(db[collectionKey][index]);
+  });
+
+  app.delete(`/api/${collectionKey}/:id`, authMiddleware, async (req, res) => {
+    try {
+      const db = await readDb();
+
+      if (collectionKey === "sessions") {
+        deleteSessionCascade(db, req.auth.sub, req.params.id);
+      } else if (collectionKey === "projects") {
+        deleteProjectAndUnlinkClimbs(db, req.auth.sub, req.params.id);
+      } else {
+        const index = db[collectionKey].findIndex((item) => item.id === req.params.id && item.userId === req.auth.sub);
+
+        if (index === -1) {
+          res.status(404).json({ message: "Record not found." });
+          return;
+        }
+
+        db[collectionKey].splice(index, 1);
+      }
+
+      await writeDb(db);
+      res.json({ ok: true });
+    } catch (error) {
+      res.status(error.statusCode || 500).json({ message: error.message || "Internal server error" });
+    }
   });
 }
 

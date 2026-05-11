@@ -4,11 +4,12 @@ import { useEffect, useState } from "react";
 import { ClimbSheet, createEmptyDraft, DraftClimb } from "@/components/climb-sheet";
 import { Card, EmptyState, PageHeader, PillRow, SectionTitle } from "@/components/common";
 import { ShareCardModal } from "@/components/share-card-modal";
-import { DISCIPLINE_OPTIONS, OUTCOME_LABELS } from "@/constants/climbing";
+import { DISCIPLINE_OPTIONS, FAILURE_REASON_OPTIONS, OTHER_FAILURE_REASON_VALUE, OUTCOME_LABELS } from "@/constants/climbing";
 import { useBootstrapData } from "@/hooks/use-bootstrap-data";
+import { useI18n } from "@/i18n";
 import { useProtectedPage } from "@/hooks/use-protected-page";
 import { DraftMediaAsset, persistMediaUri } from "@/services/media";
-import { CompleteSessionPayload, createId, saveCompleteSession, updateCompleteSession } from "@/services/repositories";
+import { CompleteSessionPayload, createId, deleteSession, saveCompleteSession, updateCompleteSession } from "@/services/repositories";
 import { readStorage, removeStorage, writeStorage } from "@/services/storage";
 import { Climb, ClimbingSession, Media, Project, ShareCard } from "@/types/domain";
 import { buildGradeInfo } from "@/utils/grade";
@@ -26,6 +27,7 @@ const SESSION_DRAFT_STORAGE_KEY = "cgj.session-draft.v1";
 type StoredSessionDraft = {
   sessionDraft: SessionDraft;
   draftClimbs: DraftClimb[];
+  openBetaPrefill?: OpenBetaLogPrefill;
 };
 
 function formatLocalDate(date = new Date()) {
@@ -115,6 +117,9 @@ function buildSessionDraftFromSession(session: ClimbingSession): SessionDraft {
 }
 
 function buildDraftFromSavedClimb(climb: Climb, projects: Project[], mediaItems: DraftMediaAsset[]): DraftClimb {
+  const knownFailureReasons = new Set<string>(FAILURE_REASON_OPTIONS);
+  const customFailureReason = climb.failureReasons.find((reason) => !knownFailureReasons.has(reason));
+
   return {
     id: climb.id,
     gradeLabel: climb.gradeLabel,
@@ -131,7 +136,10 @@ function buildDraftFromSavedClimb(climb: Climb, projects: Project[], mediaItems:
     highPoint: climb.highPoint,
     fearRating: climb.fearRating,
     tags: climb.tags,
-    failureReasons: climb.failureReasons,
+    failureReasons: Array.from(new Set(climb.failureReasons.map((reason) => (knownFailureReasons.has(reason) ? reason : OTHER_FAILURE_REASON_VALUE)))),
+    otherFailureReason: customFailureReason?.startsWith(`${OTHER_FAILURE_REASON_VALUE}：`)
+      ? customFailureReason.slice(`${OTHER_FAILURE_REASON_VALUE}：`.length)
+      : customFailureReason,
     betaNotes: climb.betaNotes,
     externalBetaNotes: undefined,
     externalBetaSource: undefined,
@@ -191,6 +199,7 @@ export function SessionLogsContent({
   onFocusSessionHandled?: () => void;
 }) {
   const auth = useProtectedPage();
+  const { language, t } = useI18n();
   const { projects, sessions, climbs, media, reload } = useBootstrapData(auth.isAuthenticated && !auth.isLoading);
   const [sheetVisible, setSheetVisible] = useState(false);
   const [draftClimbs, setDraftClimbs] = useState<DraftClimb[]>([]);
@@ -259,7 +268,7 @@ export function SessionLogsContent({
     }
 
     setEditingSessionId(undefined);
-    setActiveOpenBetaSessionPrefill(undefined);
+    setActiveOpenBetaSessionPrefill(stored.openBetaPrefill);
     setEditingDraftId(undefined);
     setSessionDraft(stored.sessionDraft);
     setDraftClimbs(stored.draftClimbs);
@@ -270,6 +279,35 @@ export function SessionLogsContent({
   function discardStoredSessionDraft() {
     removeStorage(SESSION_DRAFT_STORAGE_KEY);
     setHasStoredSessionDraft(false);
+  }
+
+  async function handleDeleteSession(sessionId: string) {
+    const targetSession = sessions.find((session) => session.id === sessionId);
+    const confirmed = await Taro.showModal({
+      title: t("删除 Session"),
+      content:
+        language === "en"
+          ? `Delete the ${targetSession?.date ?? "selected"} Session? Its Climb and media links will also be removed.`
+          : `确定删除 ${targetSession?.date ?? "这条"} Session 吗？里面的 Climb 和媒体关联也会一起删除。`,
+      confirmText: t("删除"),
+      confirmColor: "#B3261E",
+      cancelText: t("取消")
+    });
+
+    if (!confirmed.confirm) {
+      return;
+    }
+
+    try {
+      await deleteSession(sessionId);
+      if (editingSessionId === sessionId) {
+        resetEditorState();
+      }
+      await reload();
+      Taro.showToast({ title: t("Session 已删除"), icon: "success" });
+    } catch (error) {
+      Taro.showToast({ title: error instanceof Error ? error.message : t("删除失败"), icon: "none" });
+    }
   }
 
   function openSheet() {
@@ -379,7 +417,7 @@ export function SessionLogsContent({
   }, [focusSessionId, sessions, climbs, media, projects]);
 
   useEffect(() => {
-    if (editingSessionId || activeOpenBetaSessionPrefill || openBetaPrefill) {
+    if (editingSessionId) {
       return;
     }
 
@@ -387,8 +425,12 @@ export function SessionLogsContent({
       return;
     }
 
-    writeStorage<StoredSessionDraft>(SESSION_DRAFT_STORAGE_KEY, { sessionDraft, draftClimbs });
-  }, [sessionDraft, draftClimbs, editingSessionId, activeOpenBetaSessionPrefill, openBetaPrefill]);
+    writeStorage<StoredSessionDraft>(SESSION_DRAFT_STORAGE_KEY, {
+      sessionDraft,
+      draftClimbs,
+      openBetaPrefill: activeOpenBetaSessionPrefill
+    });
+  }, [sessionDraft, draftClimbs, editingSessionId, activeOpenBetaSessionPrefill]);
 
   async function handleSaveSession() {
     if (!auth.user) {
@@ -527,15 +569,15 @@ export function SessionLogsContent({
         <Card>
           <View className="row-between">
             <View>
-              <View className="card-title">发现未保存草稿</View>
-              <View className="card-subtitle">可以恢复上次未保存的 Session 草稿。</View>
+              <View className="card-title">{t("发现未保存草稿")}</View>
+              <View className="card-subtitle">{t("可以恢复上次未保存的 Session 草稿。")}</View>
             </View>
             <View className="row">
               <Button className="ghost-button" onClick={discardStoredSessionDraft}>
-                丢弃
+                {t("丢弃")}
               </Button>
               <Button className="secondary-button" onClick={restoreStoredSessionDraft}>
-                恢复
+                {t("恢复")}
               </Button>
             </View>
           </View>
@@ -546,11 +588,11 @@ export function SessionLogsContent({
         <Card>
           <View className="row-between">
             <View>
-              <View className="card-title">正在编辑已保存 Session</View>
-              <View className="card-subtitle">这次保存会直接覆盖原来的 Session、Climbs 和媒体关联。</View>
+              <View className="card-title">{t("正在编辑已保存 Session")}</View>
+              <View className="card-subtitle">{t("这次保存会直接覆盖原来的 Session、Climbs 和媒体关联。")}</View>
             </View>
             <Button className="ghost-button" onClick={resetEditorState}>
-              取消编辑
+              {t("取消编辑")}
             </Button>
           </View>
         </Card>
@@ -559,23 +601,23 @@ export function SessionLogsContent({
       <Card>
         <View className="stack-md">
           <View>
-            <Text className="field-label">日期</Text>
+            <Text className="field-label">{t("日期")}</Text>
             <Input className="input" value={sessionDraft.date} onInput={(event) => setSessionDraft({ ...sessionDraft, date: event.detail.value })} />
           </View>
 
           <View>
-            <Text className="field-label">地点</Text>
+            <Text className="field-label">{t("地点")}</Text>
             <Input
               className={`input ${activeOpenBetaSessionPrefill?.locationName ? "locked-field" : ""}`}
               value={sessionDraft.locationName ?? ""}
-              placeholder="岩馆 / 岩场 / 训练板"
+              placeholder={t("岩馆 / 岩场 / 训练板")}
               disabled={Boolean(activeOpenBetaSessionPrefill?.locationName)}
               onInput={(event) => setSessionDraft({ ...sessionDraft, locationName: event.detail.value })}
             />
           </View>
 
           <View>
-            <Text className="field-label">攀岩类型</Text>
+            <Text className="field-label">{t("攀岩类型")}</Text>
             <View className="choice-group">
               {DISCIPLINE_OPTIONS.map((option) => (
                 <View
@@ -611,19 +653,19 @@ export function SessionLogsContent({
 
           <View className="row">
             <View style={{ flex: 1 }}>
-              <Text className="field-label">时长（分钟）</Text>
+              <Text className="field-label">{t("时长（分钟）")}</Text>
               <Input className="input" type="number" value={sessionDraft.durationMinutes ? String(sessionDraft.durationMinutes) : ""} onInput={(event) => setSessionDraft({ ...sessionDraft, durationMinutes: Number(event.detail.value) || undefined })} />
             </View>
-            <RatingSelector label="精力 1-5" value={sessionDraft.energyRating ?? 3} onChange={(value) => setSessionDraft({ ...sessionDraft, energyRating: value })} />
+            <RatingSelector label={t("精力 1-5")} value={sessionDraft.energyRating ?? 3} onChange={(value) => setSessionDraft({ ...sessionDraft, energyRating: value })} />
           </View>
 
           <View className="row">
-            <RatingSelector label="疲劳 1-5" value={sessionDraft.fatigueRating ?? 3} onChange={(value) => setSessionDraft({ ...sessionDraft, fatigueRating: value })} />
-            <RatingSelector label="情绪 1-5" value={sessionDraft.moodRating ?? 3} onChange={(value) => setSessionDraft({ ...sessionDraft, moodRating: value })} />
+            <RatingSelector label={t("疲劳 1-5")} value={sessionDraft.fatigueRating ?? 3} onChange={(value) => setSessionDraft({ ...sessionDraft, fatigueRating: value })} />
+            <RatingSelector label={t("情绪 1-5")} value={sessionDraft.moodRating ?? 3} onChange={(value) => setSessionDraft({ ...sessionDraft, moodRating: value })} />
           </View>
 
           <View>
-            <Text className="field-label">今日总结</Text>
+            <Text className="field-label">{t("今日总结")}</Text>
             <Textarea className="textarea" value={sessionDraft.summary ?? ""} onInput={(event) => setSessionDraft({ ...sessionDraft, summary: event.detail.value })} />
           </View>
         </View>
@@ -632,21 +674,21 @@ export function SessionLogsContent({
       <Card>
         <View className="row-between">
           <View>
-            <View className="card-title">{editingSessionId ? "更新前检查" : "保存前检查"}</View>
+            <View className="card-title">{editingSessionId ? t("更新前检查") : t("保存前检查")}</View>
             <View className="card-subtitle">{draftClimbs.length ? `本次 Session 已暂存 ${draftClimbs.length} 条 Climb。每个 Session 只保留当天最值得记录的一条线。` : "还没有暂存 Climb，保存前需要 1 条。"}</View>
           </View>
           <View className="pill">{draftClimbs.length} 条</View>
         </View>
       </Card>
 
-      <SectionTitle>{draftClimbs.length ? "本次已添加 Climb" : "本次 Climb 草稿"}</SectionTitle>
+      <SectionTitle>{draftClimbs.length ? t("本次已添加 Climb") : t("本次 Climb 草稿")}</SectionTitle>
       {draftClimbs.length ? (
         draftClimbs.map((climb) => (
           <Card key={climb.id}>
             <View className="row-between">
               <View>
                 <View className="card-title">
-                  {climb.gradeLabel || "未填写难度"} · {climb.outcome ? OUTCOME_LABELS[climb.outcome] : "未填写状态"}
+                  {climb.gradeLabel || t("未填写难度")} · {climb.outcome ? OUTCOME_LABELS[climb.outcome] : t("未填写状态")}
                 </View>
                 <View className="card-subtitle">恐惧感 {climb.fearRating} / 5 · {climb.attemptsCount ? `${climb.attemptsCount} 次` : climb.attemptsBucket}</View>
               </View>
@@ -660,15 +702,15 @@ export function SessionLogsContent({
               </View>
             </View>
             <View style={{ marginTop: "16px" }}>
-              <PillRow items={[...(climb.tags.length ? climb.tags : ["未选动作标签"]), ...(climb.addToProject ? ["已加入 Project"] : [])]} />
+              <PillRow items={[...(climb.tags.length ? climb.tags : [t("未选动作标签")]), ...(climb.addToProject ? [t("已加入 Project")] : [])]} />
             </View>
             {climb.addToProject ? (
               <View className="card-subtitle">
-                Project：{climb.newProjectTitle?.trim() || projects.find((project) => project.id === climb.selectedProjectId)?.title || "未命名"}
+                Project：{climb.newProjectTitle?.trim() || projects.find((project) => project.id === climb.selectedProjectId)?.title || t("未命名")}
               </View>
             ) : null}
-            {climb.outcome === "sent" && climb.ascentStyle ? <View className="card-subtitle">完攀方式：{climb.ascentStyle}</View> : null}
-            {climb.outcome && climb.outcome !== "sent" && climb.attemptOutcome ? <View className="card-subtitle">本次结果：{climb.attemptOutcome}</View> : null}
+            {climb.outcome === "sent" && climb.ascentStyle ? <View className="card-subtitle">{t("完攀方式：")}{climb.ascentStyle}</View> : null}
+            {climb.outcome && climb.outcome !== "sent" && climb.attemptOutcome ? <View className="card-subtitle">{t("本次结果：")}{climb.attemptOutcome}</View> : null}
             {climb.mediaItems.length ? <View className="card-subtitle">媒体：{climb.mediaItems.length} 个</View> : null}
           </Card>
         ))
@@ -678,20 +720,20 @@ export function SessionLogsContent({
 
       <View className="row">
         <Button className="secondary-button" onClick={openSheet}>
-          {draftClimbs.length ? "编辑 Climb" : "+ 添加 Climb"}
+          {draftClimbs.length ? t("编辑 Climb") : t("+ 添加 Climb")}
         </Button>
         <Button className="primary-button" loading={isSaving} onClick={handleSaveSession}>
-          {editingSessionId ? "更新 Session" : "保存 Session"}
+          {editingSessionId ? t("更新 Session") : t("保存 Session")}
         </Button>
       </View>
 
-      <SectionTitle>历史 Session</SectionTitle>
+      <SectionTitle>{t("历史 Session")}</SectionTitle>
       <Card>
-        <View className="field-label">搜索 Session</View>
+        <View className="field-label">{t("搜索 Session")}</View>
         <Input
           className="input"
           value={sessionSearchQuery}
-          placeholder="搜索日期、地点、难度、标签、结果或备注"
+          placeholder={t("搜索日期、地点、难度、标签、结果或备注")}
           onInput={(event) => setSessionSearchQuery(event.detail.value)}
         />
       </Card>
@@ -705,7 +747,7 @@ export function SessionLogsContent({
             <Card key={session.id}>
               <View className="row-between">
                 <View>
-                  <View className="card-title">{session.locationName ?? "未填写地点"}</View>
+                  <View className="card-title">{session.locationName ?? t("未填写地点")}</View>
                   <View className="card-subtitle">
                     {[session.date, timeLabel, disciplineLabel, `${sessionClimbs.length} 条 Climb`].filter(Boolean).join(" · ")}
                   </View>
@@ -713,7 +755,10 @@ export function SessionLogsContent({
                 <View className="row">
                   <View className="pill">{sessionClimbs.length}</View>
                   <Button className="ghost-button" onClick={() => handleEditSession(session.id)}>
-                    {editingSessionId === session.id ? "正在编辑" : "编辑"}
+                    {editingSessionId === session.id ? t("正在编辑") : t("编辑")}
+                  </Button>
+                  <Button className="ghost-button danger-button" onClick={() => handleDeleteSession(session.id)}>
+                    {t("删除")}
                   </Button>
                 </View>
               </View>
@@ -731,11 +776,11 @@ export function SessionLogsContent({
       <Card>
         <View className="row-between">
           <View>
-            <View className="card-title">今日攀岩结束了吗？</View>
-            <View className="card-subtitle">来看看自己的成果吧。会按今天所有已保存的 Session 实时生成。</View>
+            <View className="card-title">{t("今日攀岩结束了吗？")}</View>
+            <View className="card-subtitle">{t("来看看自己的成果吧。会按今天所有已保存的 Session 实时生成。")}</View>
           </View>
           <Button className="primary-button" onClick={handleGenerateTodayShareCard}>
-            生成今日卡
+            {t("生成今日卡")}
           </Button>
         </View>
       </Card>
@@ -776,7 +821,7 @@ export function SessionLogsContent({
 
   return (
     <View className="page">
-      <PageHeader title="记录一次完整攀岩" subtitle="登录后直接写入服务端数据，不再依赖本地业务存储。" showBack />
+      <PageHeader title={t("记录一次完整攀岩")} subtitle={t("登录后直接写入服务端数据，不再依赖本地业务存储。")} showBack />
       {body}
     </View>
   );

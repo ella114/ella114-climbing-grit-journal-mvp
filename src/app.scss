@@ -85,6 +85,11 @@ page {
   border: 1px solid $border;
 }
 
+.danger-button {
+  color: #B3261E;
+  border-color: rgba(179, 38, 30, 0.28);
+}
+
 .card {
   background: rgba(255, 249, 243, 0.94);
   border: 1px solid $border;
@@ -119,23 +124,6 @@ page {
   font-size: 18px;
   font-weight: 700;
   line-height: 1.35;
-}
-
-.breadcrumb-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: -4px 0 14px;
-}
-
-.breadcrumb-item {
-  padding: 6px 10px;
-  border: 1px solid $border;
-  border-radius: 999px;
-  background: rgba(255, 249, 243, 0.86);
-  color: $accent;
-  font-size: 13px;
-  line-height: 1.25;
 }
 
 .row {

@@ -2,6 +2,7 @@ import { Button, View } from "@tarojs/components";
 import Taro, { useTabItemTap } from "@tarojs/taro";
 import { Card, EmptyState, MetricCard, PageHeader, PillRow, SectionTitle } from "@/components/common";
 import { useBootstrapData } from "@/hooks/use-bootstrap-data";
+import { useI18n } from "@/i18n";
 import { useProtectedPage } from "@/hooks/use-protected-page";
 import { switchToLogs } from "@/utils/logs-navigation";
 import {
@@ -15,6 +16,7 @@ import { compareSessionsByRecentActivity, formatSessionActivityTime } from "@/ut
 
 export default function HomePage() {
   const auth = useProtectedPage();
+  const { language, t } = useI18n();
   const { sessions, climbs, projects, isLoading, reload } = useBootstrapData(auth.isAuthenticated && !auth.isLoading);
   useTabItemTap(() => {
     void reload();
@@ -57,42 +59,50 @@ export default function HomePage() {
   return (
     <View className="page">
       <PageHeader
-        title={`今天爬了吗，${auth.user?.nickname ?? "你"}？`}
-        subtitle={`这周你已经记录了 ${weeklySessions} 次 Session。`}
+        title={
+          language === "en"
+            ? `Did you climb today, ${auth.user?.nickname ?? "you"}?`
+            : `今天爬了吗，${auth.user?.nickname ?? "你"}？`
+        }
+        subtitle={
+          language === "en"
+            ? `You have logged ${weeklySessions} Sessions this week.`
+            : `这周你已经记录了 ${weeklySessions} 次 Session。`
+        }
         action={
           <View className="row">
             <Button className="avatar-button" onClick={goToCalendar}>
-              日历
+              {t("日历")}
             </Button>
             <Button className="avatar-button" onClick={goToMe}>
-              我的
+              {t("我的")}
             </Button>
           </View>
         }
       />
 
       <Card>
-        <View className="card-title">快速开始</View>
+        <View className="card-title">{t("快速开始")}</View>
         <View className="hero-value">Start Session</View>
         <View className="card-subtitle">Record your first climb. Not just grades, but fear, attempts, and persistence too.</View>
         <Button className="primary-button" onClick={() => void switchToLogs("session")}>
-          开始记录
+          {t("开始记录")}
         </Button>
       </Card>
 
       <Card>
         <View className="row-between">
           <View>
-            <View className="card-title">本周成长提醒</View>
-            <View className="card-subtitle">本周成长数据已准备好。去 Stats 查看完整复盘。</View>
+            <View className="card-title">{t("本周成长提醒")}</View>
+            <View className="card-subtitle">{t("本周成长数据已准备好。去 Stats 查看完整复盘。")}</View>
           </View>
           <Button className="secondary-button" onClick={() => goToTab("/pages/stats/index")}>
-            查看本周成长
+            {t("查看本周成长")}
           </Button>
         </View>
       </Card>
 
-      <SectionTitle>当前 Project</SectionTitle>
+      <SectionTitle>{t("当前 Project")}</SectionTitle>
       {!isLoading && activeProjects.length ? (
         activeProjects.map((project) => {
           const stats = getProjectStats(project, climbs, sessions);
@@ -102,11 +112,11 @@ export default function HomePage() {
                 <View>
                   <View className="card-title">{project.title}</View>
                   <View className="card-subtitle">
-                    {project.gradeLabel} · {project.locationName ?? "未填写地点"}
+                    {project.gradeLabel} · {project.locationName ?? t("未填写地点")}
                   </View>
                 </View>
                 <Button className="ghost-button" onClick={() => void switchToLogs("project")}>
-                  查看
+                  {t("查看")}
                 </Button>
               </View>
               <View className="metric-grid" style={{ marginTop: "16px" }}>
@@ -123,19 +133,19 @@ export default function HomePage() {
         <EmptyState title={isLoading ? "正在加载你的 Project…" : "还没有 Active Project。先把一条想反复回来的线留下来。"} />
       )}
 
-      <SectionTitle>最近一次 Session</SectionTitle>
+      <SectionTitle>{t("最近一次 Session")}</SectionTitle>
       {latestSession ? (
         <Card>
-          <View className="card-title">{latestSession.locationName ?? "未填写地点"}</View>
+          <View className="card-title">{latestSession.locationName ?? t("未填写地点")}</View>
           <View className="card-subtitle">{getLatestSessionSubtitle()}</View>
           <View className="divider" />
-          <View>{latestSession.summary ?? "今天的进步，可能更像坚持。"}</View>
+          <View>{latestSession.summary ?? t("今天的进步，可能更像坚持。")}</View>
         </Card>
       ) : (
         <EmptyState title={isLoading ? "正在加载最近记录…" : "记录你的第一次攀岩，不只是难度，也包括恐惧、尝试和坚持。"} />
       )}
 
-      <SectionTitle>Grit 快照</SectionTitle>
+      <SectionTitle>{t("Grit 快照")}</SectionTitle>
       <View className="metric-grid">
         {metrics.map((metric) => (
           <MetricCard key={metric.title} metric={metric} />

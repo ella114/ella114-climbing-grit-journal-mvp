@@ -4,6 +4,7 @@ import { useState } from "react";
 import { PageHeader } from "@/components/common";
 import { ProjectLogsContent } from "@/features/logs/project-content";
 import { SessionLogsContent } from "@/features/logs/session-content";
+import { useI18n } from "@/i18n";
 import { consumeNextLogsOpenBetaPrefill, consumeNextLogsSessionEdit, consumeNextLogsView } from "@/utils/logs-navigation";
 import type { LogsView, OpenBetaLogPrefill } from "@/utils/logs-navigation";
 
@@ -13,6 +14,7 @@ const LOGS_VIEWS: Array<{ label: string; value: LogsView }> = [
 ];
 
 export default function LogsPage() {
+  const { t } = useI18n();
   const [activeView, setActiveView] = useState<LogsView>("session");
   const [focusedSessionId, setFocusedSessionId] = useState<string | undefined>();
   const [openBetaPrefill, setOpenBetaPrefill] = useState<OpenBetaLogPrefill | undefined>();
@@ -73,7 +75,7 @@ export default function LogsPage() {
 
   return (
     <View className="page">
-      <PageHeader title="Logs" subtitle="Session 和 Project 现在放到同一个入口。" showBack={Boolean(returnUrl)} onBack={handleBack} />
+      <PageHeader title="Logs" subtitle={t("Session 和 Project 现在放到同一个入口。")} showBack={Boolean(returnUrl)} onBack={handleBack} />
       <View className="choice-group" style={{ marginBottom: "16px" }}>
         {LOGS_VIEWS.map((view) => (
           <View key={view.value} className={`choice-chip ${activeView === view.value ? "active" : ""}`} onClick={() => setActiveView(view.value)}>

@@ -86,6 +86,8 @@ export const TAG_OPTIONS = [
   "fear"
 ];
 
+export const OTHER_FAILURE_REASON_VALUE = "其他";
+
 export const FAILURE_REASON_OPTIONS = [
   "力量不足",
   "技术没找到",
@@ -95,7 +97,8 @@ export const FAILURE_REASON_OPTIONS = [
   "没找到 beta",
   "动作不熟",
   "时间不够",
-  "皮肤 / 手指不适"
+  "皮肤 / 手指不适",
+  OTHER_FAILURE_REASON_VALUE
 ];
 
 export const STATUS_LABELS = {

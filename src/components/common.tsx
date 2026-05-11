@@ -1,5 +1,7 @@
 import { Button, Text, View } from "@tarojs/components";
-import { PropsWithChildren, ReactNode } from "react";
+import Taro from "@tarojs/taro";
+import { PropsWithChildren, ReactNode, useEffect } from "react";
+import { useI18n } from "@/i18n";
 import { MetricResult } from "@/types/domain";
 
 export function PageHeader({
@@ -13,12 +15,24 @@ export function PageHeader({
   onBack?: () => void;
   showBack?: boolean;
 }) {
+  const { t } = useI18n();
+  const displayTitle = t(title);
+  const displaySubtitle = subtitle ? t(subtitle) : undefined;
+
+  useEffect(() => {
+    try {
+      Taro.setNavigationBarTitle({ title: displayTitle });
+    } catch {
+      // The custom header still renders translated text if the runtime cannot update native title.
+    }
+  }, [displayTitle]);
+
   return (
     <View className="page-header">
       <View className="page-header-main">
         <View>
-          <View className="page-title">{title}</View>
-          {subtitle ? <View className="page-subtitle">{subtitle}</View> : null}
+          <View className="page-title">{displayTitle}</View>
+          {displaySubtitle ? <View className="page-subtitle">{displaySubtitle}</View> : null}
         </View>
       </View>
       {action}
@@ -31,7 +45,8 @@ export function Card({ children }: PropsWithChildren) {
 }
 
 export function SectionTitle({ children }: PropsWithChildren) {
-  return <View className="section-title">{children}</View>;
+  const { t } = useI18n();
+  return <View className="section-title">{typeof children === "string" ? t(children) : children}</View>;
 }
 
 export function EmptyState({
@@ -43,12 +58,14 @@ export function EmptyState({
   actionText?: string;
   onAction?: () => void;
 }) {
+  const { t } = useI18n();
+
   return (
     <View className="card empty-state">
-      <View>{title}</View>
+      <View>{t(title)}</View>
       {actionText && onAction ? (
         <Button className="secondary-button" onClick={onAction}>
-          {actionText}
+          {t(actionText)}
         </Button>
       ) : null}
     </View>
@@ -56,11 +73,13 @@ export function EmptyState({
 }
 
 export function MetricCard({ metric }: { metric: MetricResult }) {
+  const { t } = useI18n();
+
   return (
     <View className="metric-card">
-      <View className="metric-name">{metric.title}</View>
-      <View className="metric-value">{metric.value}</View>
-      <View className="metric-note">{metric.detail}</View>
+      <View className="metric-name">{t(metric.title)}</View>
+      <View className="metric-value">{t(metric.value)}</View>
+      <View className="metric-note">{t(metric.detail)}</View>
     </View>
   );
 }

@@ -6,7 +6,7 @@ export const REQUEST_ABORTED_ERROR = "REQUEST_ABORTED";
 export const LOCAL_API_UNAVAILABLE_ERROR = "LOCAL_API_UNAVAILABLE";
 
 type ApiOptions = {
-  method?: "GET" | "POST" | "PATCH";
+  method?: "GET" | "POST" | "PATCH" | "DELETE";
   data?: unknown;
   skipAuth?: boolean;
 };
@@ -54,34 +54,43 @@ export async function apiRequest<T>(path: string, options: ApiOptions = {}) {
       const message =
         typeof response.data === "object" && response.data && "message" in response.data
           ? String((response.data as { message: unknown }).message)
+          : typeof response.data === "string" && response.data.trim()
+            ? response.data.trim()
           : "Request failed";
       throw new Error(message);
     }
 
     return response.data;
   } catch (error) {
-    if (
+    const requestErrorMessage =
       error &&
       typeof error === "object" &&
       "errMsg" in error &&
-      typeof error.errMsg === "string" &&
-      error.errMsg.toLowerCase().includes("abort")
+      typeof error.errMsg === "string"
+        ? error.errMsg
+        : undefined;
+
+    if (
+      requestErrorMessage?.toLowerCase().includes("abort")
     ) {
       throw new Error(REQUEST_ABORTED_ERROR);
     }
 
     if (
-      error &&
-      typeof error === "object" &&
-      "errMsg" in error &&
-      typeof error.errMsg === "string" &&
-      /(connection refused|failed to connect|econnrefused)/i.test(error.errMsg)
+      requestErrorMessage &&
+      /(connection refused|failed to connect|econnrefused)/i.test(requestErrorMessage)
     ) {
       throw new Error(LOCAL_API_UNAVAILABLE_ERROR);
     }
 
     if (process.env.NODE_ENV !== "production") {
       console.warn("[apiRequest failed]", url, error);
+    }
+
+    if (requestErrorMessage) {
+      const htmlTitle = /<title>(.*?)<\/title>/i.exec(requestErrorMessage)?.[1];
+      const preMessage = /<pre>([\s\S]*?)<\/pre>/i.exec(requestErrorMessage)?.[1];
+      throw new Error(preMessage || htmlTitle || requestErrorMessage);
     }
 
     throw error;

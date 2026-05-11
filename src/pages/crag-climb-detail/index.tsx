@@ -108,13 +108,6 @@ export default function CragClimbDetailPage() {
   const locationName = getAreaPathLabel(area);
   const wasOpenedFromLogsReturn = fromLogsReturn === "1";
   const parentBackUrl = normalizeRouteUrl(backUrl);
-  const currentSavedArea = savedArea;
-  const breadcrumbLabels = area.pathTokens?.length ? area.pathTokens : [area.area_name];
-  const breadcrumbItems = breadcrumbLabels.map((label, index) => ({
-    label,
-    uuid: area.ancestors?.[index] ?? (index === breadcrumbLabels.length - 1 ? area.uuid : undefined)
-  }));
-
   function handleBack() {
     if (wasOpenedFromLogsReturn && parentBackUrl) {
       Taro.redirectTo({ url: appendLogsReturnMarker(parentBackUrl) });
@@ -159,19 +152,6 @@ export default function CragClimbDetailPage() {
     Taro.setClipboardData({ data: `${mapCoordinate.latitude}, ${mapCoordinate.longitude}` });
   }
 
-  function goToBreadcrumbArea(areaId?: string) {
-    if (!areaId) {
-      return;
-    }
-
-    if (areaId === currentSavedArea.area.uuid) {
-      Taro.navigateTo({ url: `/pages/crag-detail/index?uuid=${encodeURIComponent(areaId)}` });
-      return;
-    }
-
-    Taro.navigateTo({ url: `/pages/crag-area-climbs/index?uuid=${encodeURIComponent(areaId)}` });
-  }
-
   function buildLogPrefill(target: "session" | "project"): OpenBetaLogPrefill {
     return {
       id: `${target}-${climb.uuid}-${Date.now()}`,
@@ -203,13 +183,6 @@ export default function CragClimbDetailPage() {
   return (
     <View className="page climb-detail-page">
       <PageHeader title={climb.name} subtitle={getAreaPathLabel(area)} showBack onBack={handleBack} />
-      <View className="breadcrumb-row">
-        {breadcrumbItems.map((item, index) => (
-          <View key={`${item.label}-${index}`} className="breadcrumb-item" onClick={() => goToBreadcrumbArea(item.uuid)}>
-            {item.label}
-          </View>
-        ))}
-      </View>
 
       <Card>
         <View className="climb-log-actions">

@@ -1,4 +1,5 @@
 import { DraftClimb } from "@/components/climb-sheet";
+import { OTHER_FAILURE_REASON_VALUE } from "@/constants/climbing";
 import { ClimbingSession } from "@/types/domain";
 
 type SessionDraft = Omit<ClimbingSession, "id" | "createdAt" | "updatedAt" | "userId">;
@@ -66,6 +67,10 @@ export function validateDraftClimb(draft: DraftClimb) {
 
   if ((draft.outcome === "not_sent" || draft.outcome === "in_progress") && !draft.attemptOutcome) {
     return "已放弃或尝试中的 Climb 需要记录这次发生了什么。";
+  }
+
+  if (draft.outcome !== "sent" && draft.failureReasons.includes(OTHER_FAILURE_REASON_VALUE) && !draft.otherFailureReason?.trim()) {
+    return "选择“其他”失败原因时，请补充具体原因。";
   }
 
   if (!isPositiveInteger(draft.attemptsCount)) {

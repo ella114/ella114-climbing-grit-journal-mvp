@@ -92,6 +92,10 @@ export function updateSession(session: ClimbingSession) {
   });
 }
 
+export function deleteSession(sessionId: string) {
+  return deleteRecordWithFallback("sessions", sessionId);
+}
+
 export function getClimbs() {
   return apiRequest<Climb[]>("/climbs");
 }
@@ -126,6 +130,38 @@ export function updateProject(project: Project) {
     method: "PATCH",
     data: project
   });
+}
+
+export function deleteProject(projectId: string) {
+  return deleteRecordWithFallback("projects", projectId);
+}
+
+async function deleteRecordWithFallback(collection: "sessions" | "projects", id: string) {
+  try {
+    return await apiRequest<{ ok: true }>(`/${collection}/${id}/delete`, {
+      method: "POST"
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+
+    if (!/Cannot POST|404|not found/i.test(message)) {
+      throw error;
+    }
+  }
+
+  try {
+    return await apiRequest<{ ok: true }>(`/${collection}/${id}`, {
+      method: "DELETE"
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+
+    if (/Cannot DELETE|Cannot POST|404|not found|<!doctype html/i.test(message)) {
+      throw new Error("当前后端还没有删除接口，请重启或重新部署后端后再试。");
+    }
+
+    throw error;
+  }
 }
 
 export function getMedia() {

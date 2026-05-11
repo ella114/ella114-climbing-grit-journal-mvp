@@ -5,8 +5,9 @@ import { Card, EmptyState, PageHeader, PillRow, SectionTitle } from "@/component
 import { ShareCardModal } from "@/components/share-card-modal";
 import { OUTCOME_LABELS } from "@/constants/climbing";
 import { useBootstrapData } from "@/hooks/use-bootstrap-data";
+import { useI18n } from "@/i18n";
 import { useProtectedPage } from "@/hooks/use-protected-page";
-import { createId, nowIso, saveProject, updateProject } from "@/services/repositories";
+import { createId, deleteProject, nowIso, saveProject, updateProject } from "@/services/repositories";
 import { Climb, ClimbingSession, Project, ShareCard } from "@/types/domain";
 import { buildGradeInfo } from "@/utils/grade";
 import { switchToLogs } from "@/utils/logs-navigation";
@@ -59,18 +60,35 @@ function normalizeProjectIdentityValue(value?: string) {
   return (value ?? "").trim().toLowerCase();
 }
 
-function hasDuplicateProjectIdentity(projects: Project[], fields: { title: string; locationName?: string; gradeLabel: string }, editingProjectId?: string) {
+function hasDuplicateProjectIdentity(
+  projects: Project[],
+  fields: { title: string; locationName?: string; gradeLabel: string; routeReferenceId?: string },
+  editingProjectId?: string
+) {
+  const routeReferenceId = normalizeProjectIdentityValue(fields.routeReferenceId);
   const title = normalizeProjectIdentityValue(fields.title);
   const locationName = normalizeProjectIdentityValue(fields.locationName);
   const gradeLabel = normalizeProjectIdentityValue(fields.gradeLabel);
 
-  return projects.some(
-    (project) =>
-      project.id !== editingProjectId &&
+  return projects.some((project) => {
+    if (project.id === editingProjectId) {
+      return false;
+    }
+
+    const projectRouteReferenceId = normalizeProjectIdentityValue(project.routeReferenceId);
+
+    if (routeReferenceId && projectRouteReferenceId && projectRouteReferenceId === routeReferenceId) {
+      return true;
+    }
+
+    return (
+      title &&
+      gradeLabel &&
       normalizeProjectIdentityValue(project.title) === title &&
       normalizeProjectIdentityValue(project.locationName) === locationName &&
       normalizeProjectIdentityValue(project.gradeLabel) === gradeLabel
-  );
+    );
+  });
 }
 
 function Section({
@@ -88,6 +106,8 @@ function Section({
   climbs: ReturnType<typeof useBootstrapData>["climbs"];
   sessions: ReturnType<typeof useBootstrapData>["sessions"];
 }) {
+  const { language, t } = useI18n();
+
   if (!projects.length) {
     return <EmptyState title={`${title} 暂时为空。`} />;
   }
@@ -96,7 +116,7 @@ function Section({
     <>
       {projects.map((project) => {
         const stats = getProjectStats(project, climbs, sessions);
-        const fearText = stats.firstFear && stats.latestFear ? `${stats.firstFear} → ${stats.latestFear}` : "数据不足";
+        const fearText = stats.firstFear && stats.latestFear ? `${stats.firstFear} → ${stats.latestFear}` : t("数据不足");
         const relatedClimbCount = climbs.filter((climb) => climb.projectId === project.id).length;
 
         return (
@@ -105,26 +125,26 @@ function Section({
               <View>
                 <View className="card-title">{project.title}</View>
                 <View className="card-subtitle">
-                  {project.gradeLabel} · {project.locationName ?? "未填写地点"} · {project.status}
+                  {project.gradeLabel} · {project.locationName ?? t("未填写地点")} · {t(project.status)}
                 </View>
               </View>
               <Button className={selectedId === project.id ? "secondary-button" : "ghost-button"} onClick={() => onOpenDetails(project)}>
-                详情
+                {t("详情")}
               </Button>
             </View>
             <View className="card-subtitle" style={{ marginTop: "12px" }}>
-              关联 {relatedClimbCount} 条 Climb · 覆盖 {stats.totalSessions} 次 Session
+              {language === "en" ? `${relatedClimbCount} linked Climbs · ${stats.totalSessions} Sessions` : `关联 ${relatedClimbCount} 条 Climb · 覆盖 ${stats.totalSessions} 次 Session`}
             </View>
             <View className="metric-grid" style={{ marginTop: "16px" }}>
               <View className="metric-card">
-                <View className="metric-name">累计尝试</View>
+                <View className="metric-name">{t("累计尝试")}</View>
                 <View className="metric-value">{stats.totalAttempts}</View>
-                <View className="metric-note">不是只有完成，尝试本身也算数。</View>
+                <View className="metric-note">{t("不是只有完成，尝试本身也算数。")}</View>
               </View>
               <View className="metric-card">
-                <View className="metric-name">恐惧变化</View>
+                <View className="metric-name">{t("恐惧变化")}</View>
                 <View className="metric-value">{fearText}</View>
-                <View className="metric-note">更敢面对，通常先于更高难度出现。</View>
+                <View className="metric-note">{t("更敢面对，通常先于更高难度出现。")}</View>
               </View>
             </View>
             <View style={{ marginTop: "16px" }}>
@@ -242,6 +262,7 @@ export function ProjectLogsContent({
   onRequestSessionEdit?: (sessionId: string) => void;
 }) {
   const auth = useProtectedPage();
+  const { language, t } = useI18n();
   const { projects, climbs, sessions, isLoading, reload } = useBootstrapData(auth.isAuthenticated && !auth.isLoading);
   const [selectedProjectId, setSelectedProjectId] = useState<string | undefined>();
   const [editingProjectId, setEditingProjectId] = useState<string | undefined>();
@@ -371,6 +392,40 @@ export function ProjectLogsContent({
     }
   }
 
+  async function handleDeleteProject(project: Project) {
+    const confirmed = await Taro.showModal({
+      title: t("删除 Project"),
+      content:
+        language === "en"
+          ? `Delete Project "${project.title}"? Historical Sessions will stay, but related Climbs will be unlinked from this Project.`
+          : `确定删除 Project「${project.title}」吗？历史 Session 不会被删除，但会解除这些 Climb 和该 Project 的关联。`,
+      confirmText: t("删除"),
+      confirmColor: "#B3261E",
+      cancelText: t("取消")
+    });
+
+    if (!confirmed.confirm) {
+      return;
+    }
+
+    try {
+      await deleteProject(project.id);
+      if (editingProjectId === project.id) {
+        resetProjectForm();
+      }
+      if (selectedProjectId === project.id) {
+        setSelectedProjectId(undefined);
+      }
+      if (sessionSheetProjectId === project.id) {
+        setSessionSheetProjectId(undefined);
+      }
+      await reload();
+      Taro.showToast({ title: t("Project 已删除"), icon: "success" });
+    } catch (error) {
+      Taro.showToast({ title: error instanceof Error ? error.message : t("删除失败"), icon: "none" });
+    }
+  }
+
   function handleStartEditProject() {
     if (!selectedProject) {
       return;
@@ -449,7 +504,9 @@ export function ProjectLogsContent({
 
       if (hasDuplicateProjectIdentity(projects, commonFields, editingProjectId)) {
         Taro.showToast({
-          title: "已经有同名、同地点、同难度的 Project。为了列表里更好区分，请换一个名字。",
+          title: commonFields.routeReferenceId
+            ? "这条路线已经有 Project。请直接继续记录已有 Project。"
+            : "已经有同名、同地点、同难度的 Project。为了列表里更好区分，请换一个名字。",
           icon: "none"
         });
         return;
@@ -498,18 +555,18 @@ export function ProjectLogsContent({
       <Card>
         <View className="row-between">
           <View>
-            <View className="card-title">继续记录</View>
-            <View className="card-subtitle">Project 本身不直接写记录，新的尝试请回到 Session 里添加。</View>
+            <View className="card-title">{t("继续记录")}</View>
+            <View className="card-subtitle">{t("Project 本身不直接写记录，新的尝试请回到 Session 里添加。")}</View>
           </View>
           <Button className="primary-button" onClick={handleGoToSessionView}>
-            去记录
+            {t("去记录")}
           </Button>
         </View>
       </Card>
 
       <Card>
-        <View className="card-title">{editingProjectId ? "编辑 Project" : "新建 Project"}</View>
-        <View className="card-subtitle">{editingProjectId ? "这里改的是已保存的 Project 信息。" : "不用先去 Record 里带出，直接在这里建一个长期目标。"}</View>
+        <View className="card-title">{editingProjectId ? t("编辑 Project") : t("新建 Project")}</View>
+        <View className="card-subtitle">{editingProjectId ? t("这里改的是已保存的 Project 信息。") : t("不用先去 Record 里带出，直接在这里建一个长期目标。")}</View>
         {activeOpenBetaProjectPrefill ? (
           <View className="locked-prefill-note">
             <View className="row-between">
@@ -526,28 +583,28 @@ export function ProjectLogsContent({
         ) : null}
         <View className="stack-md" style={{ marginTop: "14px" }}>
           <View>
-            <View className="field-label">名称</View>
+            <View className="field-label">{t("名称")}</View>
             <Input
               className={`input ${activeOpenBetaProjectPrefill?.routeName ? "locked-field" : ""}`}
               value={projectForm.title}
-              placeholder="例如 黄线屋檐 Project"
+              placeholder={t("例如 黄线屋檐 Project")}
               disabled={Boolean(activeOpenBetaProjectPrefill?.routeName)}
               onInput={(event) => setProjectForm({ ...projectForm, title: event.detail.value })}
             />
           </View>
           <View className="row">
             <View style={{ flex: 1 }}>
-              <View className="field-label">地点</View>
+              <View className="field-label">{t("地点")}</View>
               <Input
                 className={`input ${activeOpenBetaProjectPrefill?.locationName ? "locked-field" : ""}`}
                 value={projectForm.locationName}
-                placeholder="岩馆 / 岩场"
+                placeholder={t("岩馆 / 岩场")}
                 disabled={Boolean(activeOpenBetaProjectPrefill?.locationName)}
                 onInput={(event) => setProjectForm({ ...projectForm, locationName: event.detail.value })}
               />
             </View>
             <View style={{ flex: 1 }}>
-              <View className="field-label">难度</View>
+              <View className="field-label">{t("难度")}</View>
               <Input
                 className={`input ${activeOpenBetaProjectPrefill?.gradeLabel ? "locked-field" : ""}`}
                 value={projectForm.gradeLabel}
@@ -558,7 +615,7 @@ export function ProjectLogsContent({
             </View>
           </View>
           <View>
-            <View className="field-label">状态</View>
+            <View className="field-label">{t("状态")}</View>
             <View className="choice-group">
               {PROJECT_STATUS_OPTIONS.map((option) => (
                 <View
@@ -572,7 +629,7 @@ export function ProjectLogsContent({
             </View>
           </View>
           <View>
-            <View className="field-label">标签</View>
+            <View className="field-label">{t("标签")}</View>
             <Input
               className="input"
               value={projectForm.tags}
@@ -581,7 +638,7 @@ export function ProjectLogsContent({
             />
           </View>
           <View>
-            <View className="field-label">Beta 笔记</View>
+            <View className="field-label">{t("Beta 笔记")}</View>
             <View className={`external-beta-import ${canImportProjectBeta ? "" : "disabled"}`}>
               <View className="card-subtitle">OpenBeta Notes</View>
               <Button
@@ -599,30 +656,30 @@ export function ProjectLogsContent({
             <Textarea
               className="textarea"
               value={projectForm.betaNotes}
-              placeholder="先记下为什么想反复回来。"
+              placeholder={t("先记下为什么想反复回来。")}
               onInput={(event) => setProjectForm({ ...projectForm, betaNotes: event.detail.value })}
             />
           </View>
           <View className="row">
             {editingProjectId ? (
               <Button className="ghost-button" onClick={resetProjectForm}>
-                取消编辑
+                {t("取消编辑")}
               </Button>
             ) : null}
             <Button className="primary-button" loading={isSubmitting} onClick={handleSubmitProject}>
-              {editingProjectId ? "保存修改" : "创建 Project"}
+              {editingProjectId ? t("保存修改") : t("创建 Project")}
             </Button>
           </View>
         </View>
       </Card>
 
-      <SectionTitle>Project 列表</SectionTitle>
+      <SectionTitle>{t("Project 列表")}</SectionTitle>
       <Card>
-        <View className="field-label">搜索 Project</View>
+        <View className="field-label">{t("搜索 Project")}</View>
         <Input
           className="input"
           value={projectSearchQuery}
-          placeholder="搜索名称、地点、难度、标签或 beta"
+          placeholder={t("搜索名称、地点、难度、标签或 beta")}
           onInput={(event) => setProjectSearchQuery(event.detail.value)}
         />
         <View className="project-filter-tabs">
@@ -657,42 +714,56 @@ export function ProjectLogsContent({
 
       {selectedProject ? (
         <>
-          <SectionTitle>Project 详情</SectionTitle>
+          <SectionTitle>{t("Project 详情")}</SectionTitle>
           <Card>
             <View className="row-between">
               <View className="card-title">{selectedProject.title}</View>
-              <Button className="ghost-button" onClick={handleStartEditProject}>
-                编辑 Project
-              </Button>
+              <View className="row">
+                <Button className="ghost-button" onClick={handleStartEditProject}>
+                  {t("编辑 Project")}
+                </Button>
+                <Button className="ghost-button danger-button" onClick={() => handleDeleteProject(selectedProject)}>
+                  {t("删除")}
+                </Button>
+              </View>
             </View>
-            <View className="card-subtitle">{selectedProject.betaNotes ?? "还没有写 beta 笔记。"}</View>
+            <View className="card-subtitle">{selectedProject.betaNotes ?? t("还没有写 beta 笔记。")}</View>
             <View className="divider" />
             <View className="stack-sm">
               <View>RouteReference: {selectedProject.routeReferenceId ?? "P0 预留字段，当前为空"}</View>
-              <View>第一次尝试：{selectedProject.firstAttemptDate ?? "未记录"}</View>
-              <View>最近一次尝试：{selectedProject.lastAttemptDate ?? "未记录"}</View>
-              <View>媒体：{relatedClimbs.flatMap((climb) => climb.mediaIds).length} 个资源</View>
+              <View>
+                {t("第一次尝试：")}
+                {selectedProject.firstAttemptDate ?? t("未记录")}
+              </View>
+              <View>
+                {t("最近一次尝试：")}
+                {selectedProject.lastAttemptDate ?? t("未记录")}
+              </View>
+              <View>
+                {t("媒体：")}
+                {relatedClimbs.flatMap((climb) => climb.mediaIds).length} {t("个资源")}
+              </View>
             </View>
-            <SectionTitle>Timeline</SectionTitle>
+            <SectionTitle>{t("Timeline")}</SectionTitle>
             <View className="stack-sm">
               {relatedClimbs.length ? (
                 relatedClimbs.map((climb) => (
                   <View key={climb.id} className="list-item">
                     <View>{climb.gradeLabel} · {climb.outcome}</View>
-                    <View className="card-subtitle">{climb.notes ?? climb.betaNotes ?? "这次没有写备注。"}</View>
+                    <View className="card-subtitle">{climb.notes ?? climb.betaNotes ?? t("这次没有写备注。")}</View>
                   </View>
                 ))
               ) : (
-                <View className="muted">还没有关联到这条 Project 的 Climb。</View>
+                <View className="muted">{t("还没有关联到这条 Project 的 Climb。")}</View>
               )}
             </View>
             {selectedProject.status !== "sent" ? (
               <Button className="primary-button" style={{ marginTop: "20px" }} onClick={handleMarkSent}>
-                标记为 Sent
+                {t("标记为 Sent")}
               </Button>
             ) : null}
             <Button className={selectedProject.status === "sent" ? "primary-button" : "secondary-button"} style={{ marginTop: "12px" }} onClick={() => handleGenerateProjectShareCard(selectedProject)}>
-              生成分享卡
+              {t("生成分享卡")}
             </Button>
           </Card>
         </>

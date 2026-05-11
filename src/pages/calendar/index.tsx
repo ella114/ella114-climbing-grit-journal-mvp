@@ -2,6 +2,7 @@ import { ScrollView, View } from "@tarojs/components";
 import { useState } from "react";
 import { Card, PageHeader } from "@/components/common";
 import { useBootstrapData } from "@/hooks/use-bootstrap-data";
+import { useI18n } from "@/i18n";
 import { useProtectedPage } from "@/hooks/use-protected-page";
 
 const WEEKDAY_LABELS = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
@@ -40,6 +41,7 @@ function getMonthDays(monthDate: Date) {
 
 export default function CalendarPage() {
   const auth = useProtectedPage();
+  const { language, t } = useI18n();
   const { sessions, projects } = useBootstrapData(auth.isAuthenticated && !auth.isLoading);
   const today = new Date();
   const todayKey = formatDateKey(today);
@@ -62,7 +64,7 @@ export default function CalendarPage() {
 
   return (
     <View className="page calendar-page">
-      <PageHeader title="日历" showBack />
+      <PageHeader title={t("日历")} showBack />
 
       <ScrollView
         scrollY
@@ -88,7 +90,7 @@ export default function CalendarPage() {
           <View className="calendar-weekdays">
             {WEEKDAY_LABELS.map((label) => (
               <View key={label} className="calendar-weekday">
-                {label}
+                {t(label)}
               </View>
             ))}
           </View>
@@ -104,7 +106,7 @@ export default function CalendarPage() {
                 className="calendar-month"
               >
                 <View className="calendar-month-title">
-                  {monthDate.getFullYear()}年 {monthDate.getMonth() + 1}月
+                  {language === "en" ? `${monthDate.toLocaleString("en-US", { month: "long" })} ${monthDate.getFullYear()}` : `${monthDate.getFullYear()}年 ${monthDate.getMonth() + 1}月`}
                 </View>
                 <View className="calendar-grid">
                   {Array.from({ length: leadingBlanks }).map((_, index) => (
